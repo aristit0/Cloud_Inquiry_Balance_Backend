@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -210,8 +211,7 @@ func inquiryBalanceHandler(w http.ResponseWriter, r *http.Request) {
 	// Get account data
 	account, err := getAccountData(req.Account)
 	if err != nil {
-		// Check if it's a key not found error
-		if gocb.IsKeyNotFoundError(err) {
+		if errors.Is(err, gocb.ErrDocumentNotFound) {
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				ResponseCode:    "404",
@@ -221,14 +221,12 @@ func inquiryBalanceHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Other errors
 		log.Printf("Error getting account data: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(ErrorResponse{
 			ResponseCode:    "500",
 			ResponseMessage: "Internal server error while retrieving account data",
 			Timestamp:       time.Now().Format(time.RFC3339),
-			Error:           err.Error(),
 		})
 		return
 	}
@@ -304,7 +302,7 @@ func main() {
 	handler := setupCORS().Handler(router)
 
 	// Start server
-	port := ":8080"
+	port := ":2115"
 	log.Printf("🚀 Server starting on port %s", port)
 	log.Printf("📡 Endpoint: http://localhost%s/api/v1/inquiry", port)
 	log.Printf("❤️  Health check: http://localhost%s/api/v1/health", port)
